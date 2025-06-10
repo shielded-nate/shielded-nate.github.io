@@ -2,7 +2,7 @@ name: Deploy Rendered Site
 
 on:
   push:
-    branches: [ main ]
+    branches: [ src ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,37 +20,27 @@ jobs:
       run: cargo install mdbook-toc
     - uses: actions/checkout@v3
 
-    # Each deploy overwrites the contents of `gh-pages` branch from
-    # `main`, but also introduces a merge structure so that the history of
-    # `gh-pages` is tracked:
-    - name: Overwrite gh-pages branch with main branch
-      run: |
-        set -x
-        BASE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-        git config --global user.name 'autodeploy'
-        git config --global user.email 'autodeploy'
-        git fetch
-        git checkout gh-pages # ensure we have local branch
-        git checkout "$BASE_BRANCH"
-        TMP='local-temp-branch'
-        git checkout -b "$TMP" # Same tree state as main branch
-        git merge \
-          --strategy ours \
-          --commit \
-          -m 'Auto-deploy: overwriting with `main` branch' \
-          --allow-unrelated-histories \
-          gh-pages
-        git checkout gh-pages
-        git merge --ff-only "$TMP"
-        git branch -d "$TMP"
+    # Each deploy overwrites the contents of `main` branch from
+    # `src`, but also introduces a merge structure so that the history of
+    # `main` is tracked:
     - run: mdbook build
-    - name: Unignore docs
-      run: sed -i 's|^docs/$||' .gitignore
+    - name: Replace Source Files with Rendered Files
+      run: |
+        rm -r .github book.toml README.md src
+        mv book/* .
+        rmdir book
     - name: Disable jekyll
       run: touch .nojekyll
-    - name: Commit and Push render to gh-pages
+    - name: Commit and Push Render to main
       run: |
         set -x
+
+        # Save the contents of the working dir into a tree hash:
         git add --all
-        git commit -m 'Auto-deploy: rendered output'
-        git push
+        CONTENTS="$(git write-tree)"
+
+        # Synthesize a "faked" merge commit of `src` onto `main` with the rendered contents:
+        COMMIT="$(git commit-tree "$CONTENTS" -p main -p src -m 'Auto-deploy: rendered output')"
+
+        # Update `main` branch upstream:
+        git push origin "$COMMIT:refs/heads/main"
