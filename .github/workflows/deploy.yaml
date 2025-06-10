@@ -26,7 +26,8 @@ jobs:
     - run: mdbook build
     - name: Replace Source Files with Rendered Files
       run: |
-        rm -r .github book.toml README.md src
+        rm -r.github .nojekyll book.toml README.md src
+        find book # diagnostics
         mv -v book/* .
         find book # diagnostics
         rmdir book
