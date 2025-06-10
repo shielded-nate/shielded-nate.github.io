@@ -27,7 +27,7 @@ jobs:
     - name: Replace Source Files with Rendered Files
       run: |
         rm -r .github book.toml README.md src
-        mv book/* .
+        mv -v book/* .
         rmdir book
     - name: Disable jekyll
       run: touch .nojekyll
