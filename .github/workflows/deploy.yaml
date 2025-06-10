@@ -28,6 +28,7 @@ jobs:
       run: |
         rm -r .github book.toml README.md src
         mv -v book/* .
+        find book # diagnostics
         rmdir book
     - name: Disable jekyll
       run: touch .nojekyll
