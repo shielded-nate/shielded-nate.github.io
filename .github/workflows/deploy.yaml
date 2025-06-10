@@ -35,6 +35,9 @@ jobs:
       run: |
         set -x
 
+        # fetch main
+        git fetch origin refs/heads/main
+
         # Save the contents of the working dir into a tree hash:
         git add --all
         CONTENTS="$(git write-tree)"
