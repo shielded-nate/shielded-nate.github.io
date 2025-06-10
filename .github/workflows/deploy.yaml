@@ -43,7 +43,7 @@ jobs:
         CONTENTS="$(git write-tree)"
 
         # Synthesize a "faked" merge commit of `src` onto `main` with the rendered contents:
-        COMMIT="$(git commit-tree "$CONTENTS" -p main -p src -m 'Auto-deploy: rendered output')"
+        COMMIT="$(git commit-tree "$CONTENTS" -p origin/main -p src -m 'Auto-deploy: rendered output')"
 
         # Update `main` branch upstream:
         git push origin "$COMMIT:refs/heads/main"
