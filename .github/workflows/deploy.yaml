@@ -43,6 +43,9 @@ jobs:
         CONTENTS="$(git write-tree)"
 
         # Synthesize a "faked" merge commit of `src` onto `main` with the rendered contents:
+        git config --global user.name 'autodeploy'
+        git config --global user.email 'autodeploy'
+
         COMMIT="$(git commit-tree "$CONTENTS" -p origin/main -p src -m 'Auto-deploy: rendered output')"
 
         # Update `main` branch upstream:
