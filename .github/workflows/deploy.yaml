@@ -2,7 +2,7 @@ name: Deploy Rendered Site
 
 on:
   push:
-    branches: [ src ]
+    branches: [ gh-pages ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,33 +20,28 @@ jobs:
       run: cargo install mdbook-toc
     - uses: actions/checkout@v3
 
-    # Each deploy overwrites the contents of `main` branch from
-    # `src`, but also introduces a merge structure so that the history of
-    # `main` is tracked:
+    # Each deploy overwrites the contents of `gh-pages` branch from
+    # `main`, but also introduces a merge structure so that the history of
+    # `gh-pages` is tracked:
     - run: mdbook build
-    - name: Replace Source Files with Rendered Files
-      run: |
-        rm -rf .github .nojekyll book.toml README.md src
-        mv book/.* book/* .
-        rmdir book
     - name: Disable jekyll
       run: touch .nojekyll
-    - name: Commit and Push Render to main
+    - name: Commit and Push Render to gh-pages
       run: |
         set -x
 
-        # fetch main
-        git fetch origin refs/heads/main
+        # fetch gh-pages
+        git fetch origin refs/heads/gh-pages
 
         # Save the contents of the working dir into a tree hash:
         git add --all
         CONTENTS="$(git write-tree)"
 
-        # Synthesize a "faked" merge commit of `src` onto `main` with the rendered contents:
+        # Synthesize a "faked" merge commit of `main` onto `gh-pages` with the rendered contents:
         git config --global user.name 'autodeploy'
         git config --global user.email 'autodeploy'
 
-        COMMIT="$(git commit-tree "$CONTENTS" -p origin/main -p src -m 'Auto-deploy: rendered output')"
+        COMMIT="$(git commit-tree "$CONTENTS" -p origin/gh-pages -p main -m 'Auto-deploy: rendered output')"
 
-        # Update `main` branch upstream:
-        git push origin "$COMMIT:refs/heads/main"
+        # Update `gh-pages` branch upstream:
+        git push origin "$COMMIT:refs/heads/gh-pages"
