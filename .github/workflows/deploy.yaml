@@ -1,0 +1,47 @@
+name: Deploy Rendered Site
+
+on:
+  push:
+    branches: [ gh-pages ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  render-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup mdBook
+      uses: peaceiris/actions-mdbook@v2
+      with:
+        mdbook-version: 'latest'
+    - name: Install mdbook-toc
+      run: cargo install mdbook-toc
+    - uses: actions/checkout@v3
+
+    # Each deploy overwrites the contents of `gh-pages` branch from
+    # `main`, but also introduces a merge structure so that the history of
+    # `gh-pages` is tracked:
+    - run: mdbook build
+    - name: Disable jekyll
+      run: touch .nojekyll
+    - name: Commit and Push Render to gh-pages
+      run: |
+        set -x
+
+        # fetch gh-pages
+        git fetch origin refs/heads/gh-pages
+
+        # Save the contents of the working dir into a tree hash:
+        git add --all
+        CONTENTS="$(git write-tree)"
+
+        # Synthesize a "faked" merge commit of `main` onto `gh-pages` with the rendered contents:
+        git config --global user.name 'autodeploy'
+        git config --global user.email 'autodeploy'
+
+        COMMIT="$(git commit-tree "$CONTENTS" -p origin/gh-pages -p main -m 'Auto-deploy: rendered output')"
+
+        # Update `gh-pages` branch upstream:
+        git push origin "$COMMIT:refs/heads/gh-pages"
