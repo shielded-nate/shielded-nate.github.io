@@ -3,7 +3,7 @@ authors = ["Nate Wilcox"]
 language = "en"
 multilingual = false
 src = "src"
-title = "🛡️Nate🛡️"
+title = "🛡️Nate's Notes🛡️"
 
 [build]
 build-dir = "./docs"
