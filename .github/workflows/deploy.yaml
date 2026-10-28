@@ -4,53 +4,44 @@ on:
   push:
     branches: [ main ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   render-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup mdBook
-      uses: peaceiris/actions-mdbook@v2
-      with:
-        mdbook-version: 'latest'
-    - name: Install mdbook-toc
-      run: cargo install mdbook-toc
     - uses: actions/checkout@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
 
     # Each deploy overwrites the contents of `gh-pages` branch from
     # `main`, but also introduces a merge structure so that the history of
     # `gh-pages` is tracked:
-    - name: Overwrite gh-pages branch with main branch
+    #
+    # Render with the flake so the toolchain is pinned by `flake.lock`, then
+    # copy the output into `./docs` (the `build-dir` in `book.toml`):
+    - name: Render with nix
       run: |
-        set -x
-        BASE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-        git config --global user.name 'autodeploy'
-        git config --global user.email 'autodeploy'
-        git fetch
-        git checkout gh-pages # ensure we have local branch
-        git checkout "$BASE_BRANCH"
-        TMP='local-temp-branch'
-        git checkout -b "$TMP" # Same tree state as main branch
-        git merge \
-          --strategy ours \
-          --commit \
-          -m 'Auto-deploy: overwriting with `main` branch' \
-          --allow-unrelated-histories \
-          gh-pages
-        git checkout gh-pages
-        git merge --ff-only "$TMP"
-        git branch -d "$TMP"
-    - run: mdbook build
-    - name: Unignore docs
-      run: sed -i 's|^docs/$||' .gitignore
+        nix build -L
+        cp -rL --no-preserve=mode result docs
+        rm result
     - name: Disable jekyll
       run: touch .nojekyll
-    - name: Commit and Push render to gh-pages
+    - name: Commit and Push Render to gh-pages
       run: |
         set -x
+
+        # fetch gh-pages
+        git fetch origin refs/heads/gh-pages
+
+        # Save the contents of the working dir into a tree hash:
         git add --all
-        git commit -m 'Auto-deploy: rendered output'
-        git push
+        CONTENTS="$(git write-tree)"
+
+        # Synthesize a "faked" merge commit of `main` onto `gh-pages` with the rendered contents:
+        git config --global user.name 'autodeploy'
+        git config --global user.email 'autodeploy'
+
+        COMMIT="$(git commit-tree "$CONTENTS" -p origin/gh-pages -p main -m 'Auto-deploy: rendered output')"
+
+        # Update `gh-pages` branch upstream:
+        git push origin "$COMMIT:refs/heads/gh-pages"
