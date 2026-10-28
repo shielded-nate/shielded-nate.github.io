@@ -4,26 +4,26 @@ on:
   push:
     branches: [ main ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   render-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Setup mdBook
-      uses: peaceiris/actions-mdbook@v2
-      with:
-        mdbook-version: 'latest'
-    - name: Install mdbook-toc
-      run: cargo install mdbook-toc
     - uses: actions/checkout@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
 
     # Each deploy overwrites the contents of `gh-pages` branch from
     # `main`, but also introduces a merge structure so that the history of
     # `gh-pages` is tracked:
-    - run: mdbook build
+    #
+    # Render with the flake so the toolchain is pinned by `flake.lock`, then
+    # copy the output into `./docs` (the `build-dir` in `book.toml`):
+    - name: Render with nix
+      run: |
+        nix build -L
+        cp -rL --no-preserve=mode result docs
+        rm result
     - name: Disable jekyll
       run: touch .nojekyll
     - name: Commit and Push Render to gh-pages
